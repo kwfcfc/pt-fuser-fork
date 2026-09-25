@@ -4,6 +4,7 @@ use bloomfilter::Bloom;
 
 use crate::trace::{self, Event, Frame, Metrics, MetricsRange, StoredChunk, SymbolInfo, Trace};
 
+#[derive(Clone, Copy)]
 pub struct FrameCompletionOptions {
     // sometimes, calling a function first goes to the Procedure Linkage Table (PLT) stub, which
     // immediately jumps to the target function. We can remove the PLT stub frame from the trace.
@@ -336,8 +337,8 @@ mod test {
 
     #[test]
     fn complete_frame_with_chunks() {
-        let inner1 = Frame::new(INNER_RANGE1, 0, TEST_SYMBOL.clone());
-        let inner2 = Frame::new(INNER_RANGE2, 0, TEST_SYMBOL.clone());
+        let inner1 = Frame::new(INNER_RANGE1.clone(), 0, TEST_SYMBOL.clone());
+        let inner2 = Frame::new(INNER_RANGE2.clone(), 0, TEST_SYMBOL.clone());
         let incomplete = IncompleteFrame {
             start_metrics: SAMPLE_RANGE.start,
             children: vec![StoredChunk::Frame(inner1), StoredChunk::Frame(inner2)],
@@ -412,7 +413,7 @@ mod test {
             )
             .unwrap();
         assert_eq!(completed.symbol.name, "my_func");
-        assert_eq!(completed.metrics, SAMPLE_RANGE);
+        assert_eq!(completed.metrics, *SAMPLE_RANGE);
         assert_eq!(completed.chunks().count(), 1);
     }
 
@@ -422,7 +423,7 @@ mod test {
         let result = builder.complete_frame(SAMPLE_RANGE_END, None).unwrap();
         match result {
             BuilderResult::Completed(trace) => {
-                assert_eq!(trace.root.metrics, SAMPLE_RANGE);
+                assert_eq!(trace.root.metrics, *SAMPLE_RANGE);
                 assert_eq!(trace.root.chunks().count(), 1);
                 assert!(matches!(
                     trace.root.chunks().next().unwrap(),
@@ -450,7 +451,7 @@ mod test {
                 assert!(matches!(root_chunks[2], trace::Chunk::Straightline(_)));
 
                 let frame1 = extract_frame_chunk(&root_chunks[1]);
-                assert_eq!(frame1.metrics, INNER_RANGE1);
+                assert_eq!(frame1.metrics, *INNER_RANGE1);
                 assert_eq!(frame1.chunks().count(), 1);
                 assert!(matches!(
                     frame1.chunks().next().unwrap(),
@@ -467,7 +468,7 @@ mod test {
                 assert!(matches!(frame2_chunks[1], trace::Chunk::Straightline(_)));
 
                 let inner_frame = extract_frame_chunk(&frame2_chunks[0]);
-                assert_eq!(inner_frame.metrics, INNER_RANGE2);
+                assert_eq!(inner_frame.metrics, *INNER_RANGE2);
                 assert_eq!(inner_frame.chunks().count(), 1);
                 assert!(matches!(
                     inner_frame.chunks().next().unwrap(),
